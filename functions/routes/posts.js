@@ -64,8 +64,9 @@ router.post('/', function(req, res, next) {
         "Description": body.Description,
         "type": body.type,
         "idUser": mongoose.Types.ObjectId(req.user._id),
-        "Prix": body.prix,
-        "Unite": "Ariary"
+        "Prix": body.Prix,
+        "Unite": "Ariary",
+        "brand": body.brand
     };
 
     const post = new Post(item);
