@@ -109,6 +109,23 @@ router.get('/', function(req, res, next) {
         });
       });
   });
+
+  router.get('/:id', function(req, res, next) {
+    const postId = req.params.id;
+
+    Post.findById(postId, (err, post) => {
+        if (err) {
+            console.log('Error', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        res.json(post);
+    });
+});
   
 
 module.exports = router;
