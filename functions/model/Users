@@ -23,7 +23,11 @@ const userSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'UserType',
         required: true,
-      }
+    },
+    deviceToken: {
+        type: String,
+        required: false,
+    }
 });
 
 userSchema.methods.generateAuthToken = function () {
