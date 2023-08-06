@@ -4,6 +4,30 @@ const bcrypt = require("bcrypt");
 const express = require("express");
 const router = express.Router();
 
+router.post("/device-token", async (req, res) => {
+    try {
+        const { id, deviceToken } = req.body;
+
+        if (!id || !deviceToken) {
+            return res.status(400).json({ error: "id and deviceToken are required." });
+        }
+
+        const user = await User.findById(id);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        user.deviceToken = deviceToken;
+        await user.save();
+
+        return res.json(user);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "An error occurred." });
+    }
+});
+
 router.post("/", async (req, res) => {
     try {
         req.body.userType = {

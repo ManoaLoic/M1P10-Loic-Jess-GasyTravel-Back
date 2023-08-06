@@ -10,6 +10,65 @@ const { getStorage, ref, getDownloadURL, uploadBytesResumable } = require("fireb
 
 const storage = getStorage();
 
+var FCM = require('fcm-node');
+const { User } = require('../model/Users');
+
+function notifyAll(req, res, next, post){
+    User.find({}, "deviceToken")
+      .exec((err, docs) => {
+        if (err) {
+          console.log('Error', err);
+          return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        const devices = [];
+        docs.forEach(item => {
+            if(item.deviceToken) devices.push(item.deviceToken);
+        });
+
+        var serverKey = 'AAAAc_KrhKo:APA91bH07Wimr_JPLloBgUbnTIj1QinHSqKlmqCuoHMh4wK6y10x93yfEATMEv4ZqGZjutZoaug73E9Ug-4as2auXc5E8M_0IfN3JJH330hxG9Gcsc-nqLHF2EC3DvKenUJN0bi_y2jj';
+        var fcm = new FCM(serverKey);
+
+        const content = '"Jetez un coup d\'oeil des maintenant"';
+
+        var message = {
+            registration_ids: devices,
+            notification: {
+                title: `Nouveau Post : ${post.titre}`,
+                message: content,
+                body: content,
+                imageUrl: post.brand
+            },
+
+            data: {
+                title: `Nouveau Post : ${post.titre}`,
+                message: content,
+                imageUrl: post.brand,
+                body: content
+            }
+
+        };
+
+        fcm.send(message, function(err, response) {
+            if (err) {
+                console.log("Something has gone wrong!"+err);
+                console.log("Respponse:! "+response);
+                return res.status(500).send(err.message);
+            } else {
+                // showToast("Successfully sent with response");
+                console.log("Successfully sent with response: ", response);
+                return res.status(200).send(post);
+            }
+
+        });
+
+    });
+}
+
+router.get('/test', function(req, res, next) {
+    notifyAll(req, res, next, {});
+});
+
 router.post("/upload", async (req, res) => {
     try {
         const base64File = req.body.file;
@@ -66,7 +125,8 @@ router.post('/', function(req, res, next) {
         "idUser": mongoose.Types.ObjectId(req.user._id),
         "Prix": body.Prix,
         "Unite": "Ariary",
-        "brand": body.brand
+        "brand": body.brand,
+        "video": body.video
     };
 
     const post = new Post(item);
@@ -75,7 +135,8 @@ router.post('/', function(req, res, next) {
           console.log('Error on create Post', err);
           res.sendStatus(500);      
         }
-        res.send(post);
+        notifyAll(req, res, next, post)
+        // res.send(post);
         console.log('Create Post:', post);
     });
 
@@ -85,8 +146,14 @@ router.get('/', function(req, res, next) {
     const page = parseInt(req.query.page) || 1;
     const limit = 5;
     const offset = (page - 1) * limit;
+    const {q} = req.query;
   
-    Post.find({}, "titre Description Prix Unite brand Type")
+    let filter = {};
+    if (q && q.trim() !== "") {
+        filter = { titre: { $regex: new RegExp('^' + q, 'i') } };
+    }
+
+    Post.find(filter, "titre Description Prix Unite brand Type")
       .skip(offset)
       .limit(limit)
       .exec((err, docs) => {
@@ -95,7 +162,7 @@ router.get('/', function(req, res, next) {
           return res.status(500).json({ error: 'Internal Server Error' });
         }
         
-        Post.countDocuments({}, (err, totalCount) => {
+        Post.countDocuments(filter, (err, totalCount) => {
           if (err) {
             console.log('Error', err);
             return res.status(500).json({ error: 'Internal Server Error' });
